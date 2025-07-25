@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         store: [HHGLOBAL, GNP]
+      max-parallel: 1
 
     env:
       GRAPHQL_URL: ${{ secrets[ format('GRAPHQL_URL_{0}', matrix.store) ] }}
