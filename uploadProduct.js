@@ -1,14 +1,14 @@
 const axios = require('axios');
 require('dotenv').config();
 
-const surfaces = {
-    'POLIESTER FINO': 'TEXTIL',
-    'NYLON LIGHT': 'TEXTIL',
-    'MICROFIBRA PARIS': 'TEXTIL',
-    'NEOPRENO': 'TEXTIL',
-    'ALGODON PIQUE': 'TEXTIL',
-    'ALGODON': 'TEXTIL',
-};
+// const surfaces = {
+//     'POLIESTER FINO': 'TEXTIL',
+//     'NYLON LIGHT': 'TEXTIL',
+//     'MICROFIBRA PARIS': 'TEXTIL',
+//     'NEOPRENO': 'TEXTIL',
+//     'ALGODON PIQUE': 'TEXTIL',
+//     'ALGODON': 'TEXTIL',
+// };
 
 const categories = {
     'CHAMARRA': 'textil,chamarras y chalecos',
@@ -33,6 +33,7 @@ const colors = {
     'OXJ': 'OXFORD',
     'AZU': 'AZUL CIAN',
     'ROS': 'ROSA',
+    'LAD': 'LADRILLO'
 }
 
 function processProductData(product) {
@@ -48,7 +49,8 @@ function processProductData(product) {
                 key: 'superficie',
                 namespace: 'custom',
                 type: 'single_line_text_field',
-                value: surfaces[product.tela]
+                value: 'TEXTIL'
+                // value: surfaces[product.tela]
             }
         ],
         productOptions: [
@@ -115,7 +117,8 @@ function createVariants(modelo, products, locationId, mediaNodes) {
                     { optionName: 'Talla', name: product.talla }
                 ],
                 price: product.precio_distribuidor / 0.67,
-                mediaId: matchingMedia ? matchingMedia.id : mediaNodes[0].id
+                mediaId: matchingMedia ? matchingMedia.id : mediaNodes[0].id,
+                taxable: false,
             };
         });
 }
