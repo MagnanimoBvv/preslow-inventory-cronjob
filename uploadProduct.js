@@ -237,6 +237,10 @@ async function uploadPreslowProduct(modelProducts, locationId, publications) {
     try {
         const productInput = processProductData(modelProducts[0]);
         const media = getProductMedia(modelProducts);
+        media.push({
+            mediaContentType: 'IMAGE',
+            originalSource: 'https://www.preslow.com/_next/image?url=%2Fimages%2FGuiaTallas.jpg&w=1200&q=75',
+        })
 
         const { product: productResponse, mediaNodes } = await uploadProduct(productInput, media);
 
