@@ -2,7 +2,7 @@ name: Update Products Cronjob
 
 on:
   schedule:
-    - cron: "0 */4 * * *"
+    - cron: "0 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -11,18 +11,18 @@ jobs:
 
     strategy:
       matrix:
-        store: [HHGLOBAL, GNP]
+        store: [GI, HHG]
       max-parallel: 1
 
     env:
       GRAPHQL_URL: ${{ secrets[ format('GRAPHQL_URL_{0}', matrix.store) ] }}
       SHOPIFY_TOKEN: ${{ secrets[ format('SHOPIFY_TOKEN_{0}', matrix.store) ] }}
-      API_KEY: ${{ secrets.API_KEY }}
+      PW_KEY: ${{ secrets.PW_KEY }}
 
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with: { node-version: "18" }
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "20" }
       - run: npm install
 
       - name: Run update for ${{ matrix.store }}
