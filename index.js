@@ -1,6 +1,6 @@
 require('dotenv').config();
 const axios = require('axios');
-const { getLocationId, getProductByHandle, updateInventory } = require('./shopifyFunctions');
+const { getLocationId, paginateProductsByVendor, updateInventory } = require('./shopifyFunctions');
 
 async function getPreslowProducts() {
     const response = await axios.get(
@@ -14,10 +14,19 @@ async function getPreslowProducts() {
     return response.data;
 }
 
-async function updateProducts() {
-    const products = await getPreslowProducts();
+function getStores() {
+    const storeNames = process.env.STORES.split(',');
 
-    const locationId = await getLocationId();
+    return storeNames.map(name => ({
+        name,
+        graphqlUrl: process.env[`GRAPHQL_URL_${name}`],
+        shopifyToken: process.env[`SHOPIFY_TOKEN_${name}`],
+    }));
+}
+
+async function updateProducts(store, products) {
+    const locationId = await getLocationId(store);
+    const shopifyProducts = await paginateProductsByVendor(store, 'Preslow');
     const uniqueModels = [...new Set(products.map(p => p.modelo))];
     for (const model of uniqueModels) {
         // if (model !== 'PRF71484') continue; // If para pruebas con un producto específico
@@ -25,37 +34,47 @@ async function updateProducts() {
         const product = activeVariants[0];
         try {
             const handle = `pw-${product.modelo}`.trim().toLowerCase();
-            const shopifyProduct = await getProductByHandle(handle);
-            if (!shopifyProduct) {
-                continue;
-            }
+            const shopifyProduct = shopifyProducts.find(p => p.handle === handle);
+            if (!shopifyProduct) continue;
 
             const shopifyVariants = shopifyProduct.variants.nodes;
-            for (const activeVariant of activeVariants) {
-                const variant = shopifyVariants.find(v => v.sku === activeVariant.modelo_ct);
-                const variantInventory = activeVariant.disponible;
-                console.log(`Variante encontrada: ${shopifyProduct.title} ${variant.title}, Inventario: Prev ${variant.inventoryQuantity} Now ${variantInventory}`);
+            const activeVariantBySKU = new Map(activeVariants.map(v => [v.modelo_ct, v]));
 
-                if (variant.inventoryQuantity !== variantInventory) {
-                    const variantToUpdate = {
-                        quantities: {
-                            changeFromQuantity: null,
-                            inventoryItemId: variant.inventoryItem.id,
-                            locationId,
-                            quantity: variantInventory,
-                        },
-                        name: "available",
-                        reason: "correction",
-                    };
-                    const response = await updateInventory(variantToUpdate);
-                    console.log('Inventario actualizado:', response.changes);
-                }
+            for (const variant of shopifyVariants) {
+                const activeVariant = activeVariantBySKU.get(variant.sku);
+                const targetInventory = activeVariant ? activeVariant.disponible : 0;
+                const label = activeVariant ? 'Variante existente' : 'Variante faltante';
+                console.log(`[${store.name}] ${label}: ${shopifyProduct.title} ${variant.title}, Prev ${variant.inventoryQuantity} Now ${targetInventory}`);
+
+                if (variant.inventoryQuantity === targetInventory) continue;
+
+                const variantToUpdate = {
+                    quantities: {
+                        changeFromQuantity: null,
+                        inventoryItemId: variant.inventoryItem.id,
+                        locationId,
+                        quantity: targetInventory,
+                    },
+                    name: "available",
+                    reason: "correction",
+                };
+                const response = await updateInventory(store, variantToUpdate);
+                console.log(`[${store.name}] Inventario actualizado:`, response.changes);
             }
             // break;
         } catch (error) {
-            console.error(`Error actualizando el producto ${product.linea} ${product.departamento} ${product.nombre} ${product.modelo}:`, error);
+            console.error(`[${store.name}] Error actualizando ${product.linea} ${product.departamento} ${product.nombre} ${product.modelo}:`, error);
         }
     }
 }
 
-updateProducts();
+async function main() {
+    const products = await getPreslowProducts();
+
+    const stores = getStores();
+    for (const store of stores) {
+        await updateProducts(store, products);
+    }
+}
+
+main();
